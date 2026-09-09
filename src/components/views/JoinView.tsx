@@ -18,6 +18,13 @@ import {
   Globe,
   FileCode,
   SlidersHorizontal,
+  Lock,
+  Scale,
+  Cpu,
+  Database,
+  BarChart3,
+  Server,
+  Code,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -31,10 +38,137 @@ interface JoinViewProps {
 
 export type PersonaType = 'business' | 'academic' | 'general';
 
+const PERSONA_BENEFITS: Record<
+  PersonaType,
+  {
+    badge: string;
+    title: string;
+    tagline: string;
+    summary: string;
+    statValue: string;
+    statLabel: string;
+    features: Array<{
+      icon: React.ComponentType<{ className?: string }>;
+      title: string;
+      description: string;
+      pill: string;
+    }>;
+    highlightTitle: string;
+    highlightDesc: string;
+  }
+> = {
+  business: {
+    badge: 'Enterprise & Production Tier',
+    title: 'Atlas for Business & Enterprise',
+    tagline: 'Reliable, cost-effective reasoning infrastructure for mission-critical workloads.',
+    summary:
+      'Atlas replaces bulky cloud frontier models with a dedicated sub-1B deterministic reasoning model that cuts inference bills by up to 88% and eliminates data leakage.',
+    statValue: '88%',
+    statLabel: 'Compute cost reduction vs hosted frontier APIs',
+    features: [
+      {
+        icon: Lock,
+        title: 'Zero Data Leakage & Private VPC',
+        description:
+          'Deploy compiled binaries in private VPCs with zero external prompt telemetry.',
+        pill: 'Private VPC',
+      },
+      {
+        icon: Scale,
+        title: 'Deterministic SLA & Audit Trails',
+        description:
+          'Bit-level reproducible reasoning chains eliminate prompt drift for regulatory audits.',
+        pill: 'Zero Drift',
+      },
+      {
+        icon: Cpu,
+        title: 'Sub-1B Resource Footprint',
+        description:
+          'Low GPU VRAM requirements enable massive concurrency without costly H100 clusters.',
+        pill: 'High Concurrency',
+      },
+    ],
+    highlightTitle: 'Enterprise Clearance Includes:',
+    highlightDesc:
+      'Dedicated VPC deployment packages, custom SLA benchmarks, and compliance reporting tools.',
+  },
+  academic: {
+    badge: 'Academic & Research Tier',
+    title: 'Atlas for Academic Researchers',
+    tagline: 'An open, unaligned reasoning substrate for studying formal logic and compute scaling.',
+    summary:
+      'Atlas removes conversational RLHF guardrails that hinder formal logic and mathematics, providing clean token-level transparency into search trees and test-time compute.',
+    statValue: '0%',
+    statLabel: 'Alignment tax — unconstrained reasoning pathways',
+    features: [
+      {
+        icon: Zap,
+        title: 'Zero Alignment Tax',
+        description:
+          'Pure symbolic derivations without conversational guardrails refusing complex logic.',
+        pill: 'Pure Logic',
+      },
+      {
+        icon: BarChart3,
+        title: 'Observable Test-Time Compute',
+        description:
+          'Full visibility into rollout trees, backtrack dynamics, and per-token logit probabilities.',
+        pill: 'Observability',
+      },
+      {
+        icon: SlidersHorizontal,
+        title: 'Reproducible Benchmark Harness',
+        description:
+          'Standardized evaluation seeds for GSM8K, MATH, and ARC-AGI for peer-reviewed research.',
+        pill: 'Verifiable Seeds',
+      },
+    ],
+    highlightTitle: 'Academic Clearance Includes:',
+    highlightDesc:
+      'Grant compute credits, token-level logit access, and raw trace datasets for published research.',
+  },
+  general: {
+    badge: 'Developer & Builder Tier',
+    title: 'Atlas for Developers & Autonomous Agents',
+    tagline: 'Sub-15ms local reasoning embedded directly into your tools, CLI, and apps.',
+    summary:
+      'Atlas brings instantaneous, deterministic reasoning to your local machine. Build autonomous coding agents, CLI tools, and offline applications with zero API fees.',
+    statValue: '< 15ms',
+    statLabel: 'Time-to-first-token on modern Apple Silicon / CUDA',
+    features: [
+      {
+        icon: Zap,
+        title: 'Sub-15ms Local Latency',
+        description:
+          'Ultra-compact sub-1B footprint runs natively on Apple Silicon, CUDA, or CPU offline.',
+        pill: '< 15ms Response',
+      },
+      {
+        icon: Terminal,
+        title: 'Deterministic Agent Tool-Calling',
+        description:
+          'Strict JSON schema outputs and multi-step CLI executions without conversational fluff.',
+        pill: 'Agent Ready',
+      },
+      {
+        icon: Server,
+        title: 'Drop-In OpenAI & vLLM API',
+        description:
+          'Connect seamlessly to Cursor, Claude Code, or custom frameworks via standard /v1 endpoints.',
+        pill: 'Standard Protocol',
+      },
+    ],
+    highlightTitle: 'Developer Clearance Includes:',
+    highlightDesc:
+      'Instant sandbox token, native TypeScript/Python SDKs, and local CLI runner instructions.',
+  },
+};
+
 export const JoinView: React.FC<JoinViewProps> = ({
   initialCode,
   navigate,
   onOpenDemo,
+  onOpenAuth,
 }) => {
   const { user, submitWaitlist } = useAuth();
 
@@ -71,11 +205,16 @@ export const JoinView: React.FC<JoinViewProps> = ({
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [tempCode, setTempCode] = useState(inviteCode);
 
-  // Clean 3-step flow: 1: Persona, 2: Midway (Features & Expectations + Details), 3: Access Ready & Dashboard
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // 4-step clean flow:
+  // Step 1: Persona Focus Area (Welcome to Odyssey)
+  // Step 2: Tailored Profession Benefits (Why Atlas for your role)
+  // Step 3: Clear details form with dynamic mandatory fields based on profession
+  // Step 4: Access Pass Ready
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [persona, setPersona] = useState<PersonaType>('academic');
+  const currentBenefits = PERSONA_BENEFITS[persona];
 
-  // Minimal form state - NO delivery format selection (full flexibility) and NO custom hardware questions (handled by us)
+  // Form state
   const [fullName, setFullName] = useState((user?.user_metadata?.full_name as string) || '');
   const [email, setEmail] = useState(user?.email || '');
   const [organization, setOrganization] = useState(
@@ -85,6 +224,7 @@ export const JoinView: React.FC<JoinViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assignedToken, setAssignedToken] = useState('');
   const [copiedToken, setCopiedToken] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleApplyCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +232,6 @@ export const JoinView: React.FC<JoinViewProps> = ({
     setInviteCode(clean);
     setIsEditingCode(false);
 
-    // Sync URL without reload
     try {
       const newUrl = new URL(window.location.href);
       if (newUrl.hash) {
@@ -108,22 +247,26 @@ export const JoinView: React.FC<JoinViewProps> = ({
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !email.includes('@')) return;
+    if (!fullName.trim()) return;
+    if ((persona === 'business' || persona === 'academic') && !organization.trim()) return;
+
     setIsSubmitting(true);
 
     const roleName =
       persona === 'business'
-        ? 'Enterprise / Production Lead'
+        ? 'Enterprise Lead'
         : persona === 'academic'
         ? 'Academic Researcher'
         : 'Developer / Builder';
 
-    const intendedSummary = `[ROLE: ${persona.toUpperCase()} | REF: ${inviteCode}] Full Multi-Channel Delivery (API, Native C++, Weights) | Hardware: Managed by Odyssey`;
+    const intendedSummary = `[ROLE: ${persona.toUpperCase()} | REF: ${inviteCode}] Early Access Pipeline`;
 
     try {
       await submitWaitlist({
-        email: email || user?.email || `${persona}-${Date.now()}@odyssey-access.internal`,
-        full_name: fullName || 'Verified Researcher',
-        organization: organization || (persona === 'business' ? 'Enterprise' : 'Independent'),
+        email: email.trim(),
+        full_name: fullName.trim(),
+        organization: organization.trim() || (persona === 'general' ? 'Independent' : undefined),
         role: roleName,
         delivery_channel: 'all',
         intended_use: intendedSummary,
@@ -132,10 +275,10 @@ export const JoinView: React.FC<JoinViewProps> = ({
       console.warn('Registration notice:', err);
     }
 
-    const token = `ODY-${persona.toUpperCase()}-${inviteCode.replace(/[^A-Z0-9]/g, '').slice(0, 6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const token = `ODY-${persona.toUpperCase().slice(0, 3)}-${inviteCode.replace(/[^A-Z0-9]/g, '').slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`;
     setAssignedToken(token);
     setIsSubmitting(false);
-    setStep(3);
+    setStep(4);
   };
 
   const copyTokenToClipboard = () => {
@@ -145,96 +288,123 @@ export const JoinView: React.FC<JoinViewProps> = ({
     setTimeout(() => setCopiedToken(false), 2000);
   };
 
+  const copyInviteLink = () => {
+    const link = `${window.location.origin}/#/join?ref=${encodeURIComponent(inviteCode)}`;
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   return (
-    <div className="min-h-screen bg-canvas text-text-main py-12 sm:py-20">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-8">
-        {/* Top Header & Minimal Referral Badge */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface border border-border-subtle rounded-full text-xs font-mono">
+    <div className="min-h-screen bg-canvas text-text-main py-12 sm:py-20 flex flex-col justify-center font-sans">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 w-full space-y-6">
+        {/* Referral Pill */}
+        <div className="flex items-center justify-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface border border-border-subtle rounded-full text-xs font-mono shadow-xs">
             <Key className="w-3.5 h-3.5 text-accent-pri" />
-            <span className="text-text-muted">Referral:</span>
+            <span className="text-text-muted">Invite:</span>
             {isEditingCode ? (
               <form onSubmit={handleApplyCode} className="inline-flex items-center gap-1.5">
                 <input
                   type="text"
                   value={tempCode}
                   onChange={(e) => setTempCode(e.target.value)}
-                  className="px-2 py-0.5 bg-canvas border border-accent-pri text-accent-pri rounded font-bold uppercase text-xs focus:outline-none w-32"
+                  className="px-2 py-0.5 bg-canvas border border-accent-pri text-accent-pri rounded font-bold uppercase text-xs focus:outline-none w-28"
                   autoFocus
                 />
                 <button
                   type="submit"
-                  className="text-xs bg-accent-pri text-canvas px-2 py-0.5 rounded font-bold hover:bg-accent-pri-hover"
+                  className="text-xs bg-accent-pri text-canvas px-2 py-0.5 rounded font-bold hover:bg-accent-pri-hover cursor-pointer"
                 >
-                  Save
+                  Apply
                 </button>
               </form>
             ) : (
               <button
+                type="button"
                 onClick={() => {
                   setTempCode(inviteCode);
                   setIsEditingCode(true);
                 }}
-                className="font-bold text-accent-pri hover:underline cursor-pointer"
-                title="Click to edit referral code"
+                className="font-bold text-accent-pri hover:underline cursor-pointer flex items-center gap-1"
+                title="Click to edit invite code"
               >
-                {inviteCode}
+                <span>{inviteCode}</span>
+                <span className="text-[10px] text-text-dim">✎</span>
               </button>
             )}
           </div>
+        </div>
 
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-text-main font-sans">
+        {/* Top Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-text-main font-sans">
             {step === 1 && 'Welcome to Odyssey'}
-            {step === 2 && 'Features & Expectations'}
-            {step === 3 && 'Access Ready'}
+            {step === 2 && 'Tailored for Your Role'}
+            {step === 3 && 'Complete Your Details'}
+            {step === 4 && 'Access Ready'}
           </h1>
-          <p className="text-xs sm:text-sm text-text-muted font-sans max-w-md mx-auto">
+          <p className="text-sm text-text-muted font-sans max-w-md mx-auto">
             {step === 1 && 'Tell us your focus area to tailor your onboarding experience.'}
-            {step === 2 && 'Review what is included, what to expect, and finalize your access pass.'}
-            {step === 3 && 'Your access token has been generated. Continue to your dashboard below.'}
+            {step === 2 && (
+              persona === 'business'
+                ? 'How Atlas delivers deterministic, cost-effective reasoning for enterprise workloads.'
+                : persona === 'academic'
+                ? 'How unaligned reasoning expands formal logic proofs, benchmarks, and interpretability.'
+                : 'How sub-15ms local reasoning elevates your developer tools, agents, and apps.'
+            )}
+            {step === 3 && (
+              persona === 'business'
+                ? 'Enter your organization details for enterprise pipeline clearance.'
+                : persona === 'academic'
+                ? 'Enter your academy details for research model access.'
+                : 'Enter your name and email to receive your developer sandbox pass.'
+            )}
+            {step === 4 && 'Your access pass has been verified and provisioned.'}
           </p>
         </div>
 
-        {/* Minimal Stepper Indicator */}
-        <div className="flex items-center justify-center gap-3">
-          {[1, 2, 3].map((s) => (
+        {/* 4-Bar Stepper Indicator */}
+        <div className="flex items-center justify-center gap-2.5">
+          {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 step === s
                   ? 'w-10 bg-accent-pri'
                   : step > s
-                  ? 'w-6 bg-accent-sec/60'
-                  : 'w-6 bg-border-subtle'
+                  ? 'w-8 bg-accent-sec/50'
+                  : 'w-8 bg-border-subtle'
               }`}
             />
           ))}
         </div>
 
-        {/* Dynamic Step Content */}
+        {/* Dynamic Card Container */}
         <AnimatePresence mode="wait">
-          {/* STEP 1: SELECT ROLE */}
+          {/* STEP 1: FOCUS AREA SELECTION (Exact match to screenshot) */}
           {step === 1 && (
             <motion.div
               key="step-1"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-3">
-                {/* Business */}
+                {/* Business & Enterprise */}
                 <button
                   type="button"
                   onClick={() => setPersona('business')}
                   className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
                     persona === 'business'
-                      ? 'bg-surface border-accent-pri shadow-sm'
-                      : 'bg-surface/50 border-border-subtle hover:border-border-strong hover:bg-surface'
+                      ? 'bg-surface border-accent-pri shadow-sm ring-1 ring-accent-pri/30'
+                      : 'bg-surface/60 border-border-subtle hover:border-border-strong hover:bg-surface'
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-xl ${
+                    className={`p-3 rounded-xl transition-colors shrink-0 ${
                       persona === 'business'
                         ? 'bg-accent-pri text-canvas'
                         : 'bg-surface-subtle text-text-muted'
@@ -244,31 +414,31 @@ export const JoinView: React.FC<JoinViewProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-bold text-text-main font-sans">
+                      <h3 className="text-base font-bold text-text-main font-sans">
                         Business &amp; Enterprise
                       </h3>
                       {persona === 'business' && (
-                        <Check className="w-4 h-4 text-accent-pri shrink-0" />
+                        <Check className="w-4 h-4 text-accent-pri shrink-0 stroke-[2.5]" />
                       )}
                     </div>
-                    <p className="text-xs text-text-muted leading-relaxed">
+                    <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
                       Deploying high-throughput reasoning workloads, private VPC endpoints, sub-millisecond SLAs, and strict data governance.
                     </p>
                   </div>
                 </button>
 
-                {/* Academic */}
+                {/* Academic & Research */}
                 <button
                   type="button"
                   onClick={() => setPersona('academic')}
                   className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
                     persona === 'academic'
-                      ? 'bg-surface border-accent-pri shadow-sm'
-                      : 'bg-surface/50 border-border-subtle hover:border-border-strong hover:bg-surface'
+                      ? 'bg-surface border-accent-pri shadow-sm ring-1 ring-accent-pri/30'
+                      : 'bg-surface/60 border-border-subtle hover:border-border-strong hover:bg-surface'
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-xl ${
+                    className={`p-3 rounded-xl transition-colors shrink-0 ${
                       persona === 'academic'
                         ? 'bg-accent-pri text-canvas'
                         : 'bg-surface-subtle text-text-muted'
@@ -278,31 +448,31 @@ export const JoinView: React.FC<JoinViewProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-bold text-text-main font-sans">
+                      <h3 className="text-base font-bold text-text-main font-sans">
                         Academic &amp; Research
                       </h3>
                       {persona === 'academic' && (
-                        <Check className="w-4 h-4 text-accent-pri shrink-0" />
+                        <Check className="w-4 h-4 text-accent-pri shrink-0 stroke-[2.5]" />
                       )}
                     </div>
-                    <p className="text-xs text-text-muted leading-relaxed">
+                    <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
                       Investigating formal logic, test-time compute scaling laws, reproducible benchmarks, and model internals.
                     </p>
                   </div>
                 </button>
 
-                {/* General Developer */}
+                {/* Developer & Builder */}
                 <button
                   type="button"
                   onClick={() => setPersona('general')}
                   className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 ${
                     persona === 'general'
-                      ? 'bg-surface border-accent-pri shadow-sm'
-                      : 'bg-surface/50 border-border-subtle hover:border-border-strong hover:bg-surface'
+                      ? 'bg-surface border-accent-pri shadow-sm ring-1 ring-accent-pri/30'
+                      : 'bg-surface/60 border-border-subtle hover:border-border-strong hover:bg-surface'
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-xl ${
+                    className={`p-3 rounded-xl transition-colors shrink-0 ${
                       persona === 'general'
                         ? 'bg-accent-pri text-canvas'
                         : 'bg-surface-subtle text-text-muted'
@@ -312,25 +482,31 @@ export const JoinView: React.FC<JoinViewProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-bold text-text-main font-sans">
+                      <h3 className="text-base font-bold text-text-main font-sans">
                         Developer &amp; Builder
                       </h3>
                       {persona === 'general' && (
-                        <Check className="w-4 h-4 text-accent-pri shrink-0" />
+                        <Check className="w-4 h-4 text-accent-pri shrink-0 stroke-[2.5]" />
                       )}
                     </div>
-                    <p className="text-xs text-text-muted leading-relaxed">
+                    <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
                       Building applications, competitive programming agents, CLI tools, and integrating reasoning into developer workflows.
                     </p>
                   </div>
                 </button>
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Step 1 Footer with Continue Button (Bottom Right) */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-xs text-text-dim font-mono flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-accent-pri" />
+                  <span>Free access tier • Instant clearance</span>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="w-full sm:w-auto px-6 py-3 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                  className="px-6 py-2.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <span>Continue</span>
                   <ArrowRight className="w-4 h-4" />
@@ -339,179 +515,104 @@ export const JoinView: React.FC<JoinViewProps> = ({
             </motion.div>
           )}
 
-          {/* STEP 2: MIDWAY - FEATURES & EXPECTATIONS + MINIMAL DETAILS */}
+          {/* STEP 2: PROFESSION BENEFITS (Why Atlas for Your Role) */}
           {step === 2 && (
-            <motion.form
+            <motion.div
               key="step-2"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              onSubmit={handleComplete}
-              className="bg-surface border border-border-subtle rounded-2xl p-6 sm:p-8 space-y-6"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="bg-surface border border-border-subtle rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl"
             >
-              {/* Features & Flexibility Section */}
+              {/* Selected Track Reminder & Switcher */}
+              <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-text-dim">Tailored for:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-accent-pri/10 text-accent-pri border border-accent-pri/20">
+                    {persona === 'business' && <Building className="w-3 h-3" />}
+                    {persona === 'academic' && <GraduationCap className="w-3 h-3" />}
+                    {persona === 'general' && <Terminal className="w-3 h-3" />}
+                    <span>{currentBenefits.badge}</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-xs font-mono text-text-dim hover:text-accent-pri transition-colors cursor-pointer"
+                >
+                  Change Track
+                </button>
+              </div>
+
+              {/* Title & Key Stat Headline (Horizontal) */}
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-1 min-w-0 flex-1">
+                  <h2 className="text-xl sm:text-2xl font-black text-text-main font-sans tracking-tight">
+                    {currentBenefits.title}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-text-muted font-sans leading-relaxed">
+                    {currentBenefits.summary}
+                  </p>
+                </div>
+
+                <div className="px-4 py-2.5 bg-canvas/80 border border-border-subtle rounded-2xl flex items-center gap-3 shrink-0 self-start sm:self-auto">
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-accent-pri">
+                    {currentBenefits.statValue}
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] font-mono text-text-dim leading-tight max-w-[130px]">
+                    {currentBenefits.statLabel}
+                  </div>
+                </div>
+              </div>
+
+              {/* Exactly 3 Horizontal Cards with Description Under the Title */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-accent-pri" />
-                    <h3 className="text-xs font-mono font-bold text-text-main uppercase tracking-wider">
-                      Included Features &amp; Delivery Flexibility
-                    </h3>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-accent-pri bg-accent-pri/10 px-2 py-0.5 rounded-full border border-accent-pri/20">
-                    Full Access
+                {currentBenefits.features.slice(0, 3).map((feat, idx) => {
+                  const Icon = feat.icon;
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 sm:p-4 rounded-2xl bg-canvas/40 border border-border-subtle hover:border-border-strong hover:bg-canvas/70 transition-all flex items-start gap-3.5 group"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-accent-pri/10 border border-accent-pri/25 flex items-center justify-center text-accent-pri shrink-0 group-hover:scale-105 transition-transform mt-0.5">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-bold text-text-main font-sans">
+                            {feat.title}
+                          </h3>
+                          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-surface border border-border-subtle text-text-dim group-hover:text-text-main group-hover:border-accent-pri/30 transition-colors shrink-0">
+                            {feat.pill}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-muted font-sans leading-relaxed">
+                          {feat.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Clearance Highlights Banner */}
+              <div className="p-3 bg-accent-pri/5 border border-accent-pri/20 rounded-2xl flex items-center gap-3 text-xs">
+                <div className="p-1.5 rounded-xl bg-accent-pri/15 text-accent-pri shrink-0">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-text-main mr-1.5 font-sans">
+                    {currentBenefits.highlightTitle}
                   </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="p-3 bg-canvas border border-border-subtle rounded-xl space-y-1">
-                    <div className="flex items-center gap-1.5 text-accent-pri font-mono text-xs font-bold">
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>Hosted API</span>
-                    </div>
-                    <p className="text-[11px] text-text-muted leading-snug">
-                      Low-latency streaming endpoint compatible with standard OpenAI client libraries.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-canvas border border-border-subtle rounded-xl space-y-1">
-                    <div className="flex items-center gap-1.5 text-accent-sec font-mono text-xs font-bold">
-                      <FileCode className="w-3.5 h-3.5" />
-                      <span>Native C++</span>
-                    </div>
-                    <p className="text-[11px] text-text-muted leading-snug">
-                      Standalone single-file binary with zero dependencies. Runs directly without runtime overhead.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-canvas border border-border-subtle rounded-xl space-y-1">
-                    <div className="flex items-center gap-1.5 text-text-main font-mono text-xs font-bold">
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Open Weights</span>
-                    </div>
-                    <p className="text-[11px] text-text-muted leading-snug">
-                      Standard SafeTensors weights for private evaluation, fine-tuning, and research clusters.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-surface-subtle border border-border-subtle rounded-xl flex items-center gap-2.5 text-xs text-text-muted">
-                  <Zap className="w-4 h-4 text-accent-pri shrink-0" />
-                  <span>
-                    <strong className="text-text-main">No Custom Hardware Needed:</strong> Infrastructure, serving, and inference acceleration are fully managed by Odyssey.
+                  <span className="text-text-muted font-sans leading-relaxed">
+                    {currentBenefits.highlightDesc}
                   </span>
                 </div>
               </div>
 
-              {/* Expectations Section */}
-              <div className="space-y-2.5 pt-2 border-t border-border-subtle">
-                <h3 className="text-xs font-mono font-bold text-text-muted uppercase tracking-wider">
-                  What to Expect for Your Track
-                </h3>
-                <div className="p-3.5 bg-canvas border border-border-subtle rounded-xl space-y-2 text-xs">
-                  {persona === 'business' && (
-                    <div className="space-y-1.5 text-text-muted">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Enterprise SLA &amp; Privacy:</strong> Zero data retention and dedicated throughput guarantees for your team.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Deployment Freedom:</strong> Test via hosted endpoints immediately, then transition to on-prem or VPC binaries whenever ready.</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {persona === 'academic' && (
-                    <div className="space-y-1.5 text-text-muted">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Benchmark Verification:</strong> Transparent reasoning logs for algorithmic validation and scaling papers.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Direct Weight Access:</strong> Checkpoints in SafeTensors format ready for Slurm clusters and evaluation suites.</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {persona === 'general' && (
-                    <div className="space-y-1.5 text-text-muted">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Instant Prototyping:</strong> Live interactive sandbox testing right from your browser or terminal.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-accent-pri shrink-0 mt-0.5" />
-                        <span><strong className="text-text-main">Developer Tooling:</strong> Self-contained C++ executables and REST APIs ready for your local projects.</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Minimal Contact Details */}
-              <div className="space-y-4 pt-2 border-t border-border-subtle">
-                <h3 className="text-xs font-mono font-bold text-text-muted uppercase tracking-wider">
-                  Confirm Your Information
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono font-bold text-text-muted">
-                      {persona === 'business'
-                        ? 'Company / Organization'
-                        : persona === 'academic'
-                        ? 'University / Lab'
-                        : 'Organization / Name'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={organization}
-                      onChange={(e) => setOrganization(e.target.value)}
-                      placeholder={
-                        persona === 'business'
-                          ? 'e.g. Acme Capital'
-                          : persona === 'academic'
-                          ? 'e.g. CUET CSE / Research Lab'
-                          : 'e.g. Independent Developer'
-                      }
-                      className="w-full px-3.5 py-2.5 input-neutral rounded-xl text-xs sm:text-sm focus:outline-none focus:border-accent-sec"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono font-bold text-text-muted">
-                      Your Name
-                    </label>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Full name"
-                      className="w-full px-3.5 py-2.5 input-neutral rounded-xl text-xs sm:text-sm focus:outline-none focus:border-accent-sec"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-text-muted">
-                    Work / Academic Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="researcher@organization.com"
-                    className="w-full px-3.5 py-2.5 input-neutral rounded-xl text-xs sm:text-sm focus:outline-none focus:border-accent-sec"
-                  />
-                </div>
-              </div>
-
-              {/* Form Navigation */}
-              <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+              {/* Step 2 Action Buttons */}
+              <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
@@ -522,97 +623,287 @@ export const JoinView: React.FC<JoinViewProps> = ({
                 </button>
 
                 <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm disabled:opacity-50"
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="px-6 py-2.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm hover:scale-[1.01] active:scale-[0.98]"
                 >
-                  <span>{isSubmitting ? 'Finalizing...' : 'Complete Onboarding'}</span>
+                  <span>Continue to Details</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: DYNAMIC DETAILS FORM (Minimal & User-Friendly, Uncluttered) */}
+          {step === 3 && (
+            <motion.form
+              key="step-3"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              onSubmit={handleComplete}
+              className="bg-surface border border-border-subtle rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl"
+            >
+              {/* Selected Track Reminder Pill */}
+              <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-text-dim">Selected Track:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-accent-pri/10 text-accent-pri border border-accent-pri/20">
+                    {persona === 'business' && <Building className="w-3 h-3" />}
+                    {persona === 'academic' && <GraduationCap className="w-3 h-3" />}
+                    {persona === 'general' && <Terminal className="w-3 h-3" />}
+                    <span>
+                      {persona === 'business'
+                        ? 'Business & Enterprise'
+                        : persona === 'academic'
+                        ? 'Academic & Research'
+                        : 'Developer & Builder'}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="text-xs font-mono text-text-dim hover:text-accent-pri transition-colors cursor-pointer"
+                >
+                  Change
+                </button>
+              </div>
+
+              {/* Clean Inputs */}
+              <div className="space-y-4">
+                {/* 1. Full Name - Mandatory for all 3 tracks */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono font-bold text-text-muted">
+                      Full Name <span className="text-accent-pri">*</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-accent-pri font-semibold">Required</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Alex Rivera"
+                    autoFocus
+                    className="w-full px-4 py-2.5 input-neutral rounded-xl text-sm focus:outline-none focus:border-accent-pri"
+                  />
+                </div>
+
+                {/* 2. Organization / Academy Input (Dynamic mandatory rules) */}
+                {persona === 'business' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-mono font-bold text-text-muted">
+                        Name of Organization <span className="text-accent-pri">*</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-accent-pri font-semibold">Required</span>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      placeholder="e.g. Acme AI Systems / Capital"
+                      className="w-full px-4 py-2.5 input-neutral rounded-xl text-sm focus:outline-none focus:border-accent-pri"
+                    />
+                  </div>
+                )}
+
+                {persona === 'academic' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-mono font-bold text-text-muted">
+                        Name of Academy / University <span className="text-accent-pri">*</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-accent-pri font-semibold">Required</span>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      placeholder="e.g. Stanford University / Research Lab"
+                      className="w-full px-4 py-2.5 input-neutral rounded-xl text-sm focus:outline-none focus:border-accent-pri"
+                    />
+                  </div>
+                )}
+
+                {persona === 'general' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-mono font-bold text-text-muted">
+                        Organization / Project Name <span className="text-text-dim font-normal">(Optional)</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-text-dim">Optional</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={organization}
+                      onChange={(e) => setOrganization(e.target.value)}
+                      placeholder="e.g. Independent Developer / Open Source"
+                      className="w-full px-4 py-2.5 input-neutral rounded-xl text-sm focus:outline-none focus:border-accent-pri"
+                    />
+                  </div>
+                )}
+
+                {/* 3. Email Address - Mandatory for all */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono font-bold text-text-muted">
+                      {persona === 'business'
+                        ? 'Work Email Address'
+                        : persona === 'academic'
+                        ? 'Academic / Institutional Email'
+                        : 'Email Address'}{' '}
+                      <span className="text-accent-pri">*</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-accent-pri font-semibold">Required</span>
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={
+                      persona === 'business'
+                        ? 'you@company.com'
+                        : persona === 'academic'
+                        ? 'researcher@university.edu'
+                        : 'you@domain.com'
+                    }
+                    className="w-full px-4 py-2.5 input-neutral rounded-xl text-sm focus:outline-none focus:border-accent-pri"
+                  />
+                </div>
+              </div>
+
+              {/* Navigation & Action Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="px-4 py-2.5 text-text-muted hover:text-text-main text-xs font-bold font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    isSubmitting ||
+                    !email ||
+                    !fullName.trim() ||
+                    ((persona === 'business' || persona === 'academic') && !organization.trim())
+                  }
+                  className="px-6 py-2.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <span>{isSubmitting ? 'Issuing Pass...' : 'Get Instant Access'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Uncluttered trust indicator */}
+              <div className="pt-2 flex items-center justify-center gap-4 text-[11px] text-text-dim font-mono">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-accent-pri" />
+                  No card required
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-accent-pri" />
+                  Instant Sandbox Token
+                </span>
               </div>
             </motion.form>
           )}
 
-          {/* STEP 3: ACCESS READY & TRANSITION TO DASHBOARD */}
-          {step === 3 && (
+          {/* STEP 4: ACCESS READY */}
+          {step === 4 && (
             <motion.div
-              key="step-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-surface border border-border-subtle rounded-2xl p-6 sm:p-8 space-y-6"
+              key="step-4"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25 }}
+              className="bg-surface border border-border-subtle rounded-3xl p-6 sm:p-9 space-y-6 shadow-xl"
             >
-              {/* Access Token Card */}
-              <div className="p-4 bg-canvas border border-border-subtle rounded-xl flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-text-muted uppercase font-bold">
-                    Assigned Onboarding Token
-                  </div>
-                  <div className="font-mono text-sm sm:text-base font-bold text-accent-pri truncate">
+              {/* Success Badge & Headline */}
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 rounded-full bg-accent-pri/10 border border-accent-pri/30 flex items-center justify-center mx-auto text-accent-pri">
+                  <Check className="w-7 h-7 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-mono font-bold text-accent-pri uppercase tracking-wider bg-accent-pri/10 px-2.5 py-0.5 rounded-full border border-accent-pri/20">
+                    Access Pass Confirmed
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-text-main font-sans">
+                    Welcome to Odyssey, {fullName || 'Researcher'}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-text-muted max-w-sm mx-auto">
+                    Your early access pass is active. You have full clearance to test Atlas 0.1 models and inspect reasoning outputs.
+                  </p>
+                </div>
+              </div>
+
+              {/* Minimal Token Card */}
+              <div className="p-4 bg-canvas border border-border-subtle rounded-2xl space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-text-dim">
+                  <span>YOUR ACCESS TOKEN</span>
+                  <span className="text-accent-pri font-bold capitalize">{persona} Track</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs sm:text-sm font-bold text-accent-pri truncate">
                     {assignedToken}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={copyTokenToClipboard}
-                  className="px-3 py-1.5 bg-surface hover:bg-border-subtle border border-border-subtle text-xs font-mono text-text-main rounded-lg transition-colors cursor-pointer shrink-0 flex items-center gap-1"
-                >
-                  {copiedToken ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-accent-pri" />
-                      <span>Copied</span>
-                    </>
-                  ) : (
-                    <span>Copy</span>
-                  )}
-                </button>
-              </div>
-
-              {/* Minimal Roadmap / What to Expect */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-mono font-bold text-text-muted uppercase tracking-wider">
-                  Access Status &amp; Next Steps
-                </h3>
-                <div className="space-y-2.5 text-xs text-text-muted font-sans">
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-subtle">
-                    <CheckCircle2 className="w-4 h-4 text-accent-pri shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-text-main">Pass Validated:</strong> Referral code <span className="font-mono text-accent-pri font-bold">{inviteCode}</span> has been confirmed.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-subtle">
-                    <CheckCircle2 className="w-4 h-4 text-accent-pri shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-text-main">Full Flexibility Enabled:</strong> Hosted API, standalone C++ executable, and open weights are all provisioned to your profile.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-subtle">
-                    <CheckCircle2 className="w-4 h-4 text-accent-pri shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-text-main">Managed Infrastructure:</strong> Live inference is immediately active with Odyssey-managed high-speed clusters.
-                    </div>
-                  </div>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyTokenToClipboard}
+                    className="px-3 py-1.5 bg-surface hover:bg-border-subtle border border-border-subtle text-xs font-mono text-text-main rounded-lg transition-colors cursor-pointer shrink-0 flex items-center gap-1 font-bold"
+                  >
+                    {copiedToken ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-accent-pri" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <span>Copy</span>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Action Buttons - Primary leads directly to Dashboard as requested */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border-subtle">
+              {/* Clear, direct action buttons */}
+              <div className="space-y-2.5 pt-1">
                 <button
                   type="button"
                   onClick={onOpenDemo}
-                  className="px-4 py-2.5 bg-surface hover:bg-border-subtle text-text-main border border-border-subtle font-mono text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  className="w-full py-3.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <span>Launch Demo</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-text-muted" />
+                  <Sparkles className="w-4 h-4" />
+                  <span>Launch Atlas 0.1 Sandbox Now</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => navigate('dashboard')}
-                  className="px-6 py-2.5 bg-accent-pri hover:bg-accent-pri-hover text-canvas font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-sm"
+                  className="w-full py-3 bg-surface hover:bg-surface-subtle text-text-main border border-border-subtle hover:border-accent-pri font-bold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <span>Go to Dashboard</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Go to Researcher Portal</span>
+                  <ArrowRight className="w-4 h-4 text-accent-pri" />
+                </button>
+              </div>
+
+              {/* Minimal Invite Sharing */}
+              <div className="pt-3 border-t border-border-subtle flex items-center justify-between text-xs font-mono text-text-dim">
+                <span>Invite code: <strong className="text-text-main">{inviteCode}</strong></span>
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="text-accent-pri hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  {copiedLink ? <span>Link Copied!</span> : <span>Copy Invite Link</span>}
                 </button>
               </div>
             </motion.div>
