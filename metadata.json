@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix Odyssey AI",
+  "description": "Frontier unaligned logic engines and sub-10B foundation models for deterministic execution and systems engineering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
